@@ -31,40 +31,44 @@ for market in list(markets.keys()):
 driver = webdriver.Chrome()
 driver.implicitly_wait(1)
 
+dataframe_list = []
+
 try:
     SCROLL_PAUSE_TIME = 0.5
-    driver.get(url_list[0])
-    height = driver.execute_script("return document.body.scrollHeight")
 
-    #  use 15 scrolls just in case
-    for i in range(0, 15):
-        driver.execute_script("window.scrollBy(0, 20000)")
-        time.sleep(2)
+    for url in url_list:
+        driver.get(url)
+        height = driver.execute_script("return document.body.scrollHeight")
 
-    # web scraping
-    html_soup = BeautifulSoup(driver.page_source, 'html.parser')
-    day_container = html_soup.find_all('tr', class_='BdT Bdc($seperatorColor) Ta(end) Fz(s) Whs(nw)')
+        #  use 15 scrolls just in case
+        for i in range(0, 15):
+            driver.execute_script("window.scrollBy(0, 20000)")
+            time.sleep(1)
 
-    all_price = []  # 2D array for each entry
-    for day in day_container:
-        soup_tag = [str(val.get_text()) for val in day.find_all('span')]
-        individual_price = [price.replace(",", "") for price in soup_tag]  # replace comma with space to convert into
-        # float
-        price_entry = []  # initialize new array to put converted value
-        for num in range(len(individual_price)):
-            # print(type(individual_price[num]))
-            if num != 0:
-                price = individual_price[num]
-                float_price = float(price)
-                price_entry.append(float_price)
-            else:
-                date = datetime.strptime(individual_price[num], "%b %d %Y").date()
-                price_entry.append(date)
-        all_price.append(price_entry)
+        # web scraping
+        html_soup = BeautifulSoup(driver.page_source, 'html.parser')
+        day_container = html_soup.find_all('tr', class_='BdT Bdc($seperatorColor) Ta(end) Fz(s) Whs(nw)')
 
-    # convert array into dataframe
-    dji = pd.DataFrame(all_price, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
-    dji = dji.set_index('Date')
-    print(len(dji))
+        all_price = []  # 2D array for each entry
+        for day in day_container:
+            soup_tag = [str(val.get_text()) for val in day.find_all('span')]
+            individual_price = [price.replace(",", "") for price in
+                                soup_tag]  # replace comma with space to convert into float
+            price_entry = []  # initialize new array to put converted value
+            for num in range(len(individual_price)):
+                # print(type(individual_price[num]))
+                if num != 0:
+                    price = individual_price[num]
+                    float_price = float(price)
+                    price_entry.append(float_price)
+                else:
+                    date = datetime.strptime(individual_price[num], "%b %d %Y").date()
+                    price_entry.append(date)
+            all_price.append(price_entry)
+
+        # convert array into dataframe
+        df = pd.DataFrame(all_price, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
+        df = df.set_index('Date')
+        dataframe_list.append(df)
 finally:
     driver.quit()
