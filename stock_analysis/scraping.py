@@ -3,11 +3,13 @@ import requests
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import pandas as pd
+from selenium import webdriver
+import time
 
 # get today's date in year-month-day 00:00:00 format
 today = datetime.utcnow().date()
-time = datetime.min.time()
-today_date_time = datetime.combine(today, time)
+time_now = datetime.min.time()
+today_date_time = datetime.combine(today, time_now)
 
 # get date five years ago
 five_years_ago = today_date_time - relativedelta(years=5)
@@ -26,29 +28,43 @@ for market in list(markets.keys()):
         unix_today) + '&interval=1d&filter=history&frequency=1d '
     url_list.append(full_url)
 
-# include try/except
-response_url = requests.get(url_list[0])
+driver = webdriver.Chrome()
+driver.implicitly_wait(1)
 
-# web scraping
-html_soup = BeautifulSoup(response_url.text, 'html.parser')
-day_container = html_soup.find_all('tr', class_='BdT Bdc($seperatorColor) Ta(end) Fz(s) Whs(nw)')
+try:
+    SCROLL_PAUSE_TIME = 0.5
+    driver.get(url_list[0])
+    height = driver.execute_script("return document.body.scrollHeight")
 
-all_price = []  # 2D array for each entry
-for day in day_container:
-    soup_tag = [str(val.get_text()) for val in day.find_all('span')]
-    individual_price = [price.replace(",", "") for price in soup_tag]  # replace comma with space to convert into float
-    price_entry = []  # initialize new array to put converted value
-    for num in range(len(individual_price)):
-        # print(type(individual_price[num]))
-        if num != 0:
-            price = individual_price[num]
-            float_price = float(price)
-            price_entry.append(float_price)
-        else:
-            date = datetime.strptime(individual_price[num], "%b %d %Y").date()
-            price_entry.append(date)
-    all_price.append(price_entry)
+    #  use 15 scrolls just in case
+    for i in range(0, 15):
+        driver.execute_script("window.scrollBy(0, 20000)")
+        time.sleep(2)
 
-# convert array into dataframe
-dji = pd.DataFrame(all_price, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
-dji = dji.set_index('Date')
+    # web scraping
+    html_soup = BeautifulSoup(driver.page_source, 'html.parser')
+    day_container = html_soup.find_all('tr', class_='BdT Bdc($seperatorColor) Ta(end) Fz(s) Whs(nw)')
+
+    all_price = []  # 2D array for each entry
+    for day in day_container:
+        soup_tag = [str(val.get_text()) for val in day.find_all('span')]
+        individual_price = [price.replace(",", "") for price in soup_tag]  # replace comma with space to convert into
+        # float
+        price_entry = []  # initialize new array to put converted value
+        for num in range(len(individual_price)):
+            # print(type(individual_price[num]))
+            if num != 0:
+                price = individual_price[num]
+                float_price = float(price)
+                price_entry.append(float_price)
+            else:
+                date = datetime.strptime(individual_price[num], "%b %d %Y").date()
+                price_entry.append(date)
+        all_price.append(price_entry)
+
+    # convert array into dataframe
+    dji = pd.DataFrame(all_price, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
+    dji = dji.set_index('Date')
+    print(len(dji))
+finally:
+    driver.quit()
