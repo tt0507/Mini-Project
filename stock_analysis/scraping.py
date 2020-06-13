@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import pandas as pd
 
 # get today's date in year-month-day 00:00:00 format
 today = datetime.utcnow().date()
@@ -34,18 +35,20 @@ day_container = html_soup.find_all('tr', class_='BdT Bdc($seperatorColor) Ta(end
 
 all_price = []  # 2D array for each entry
 for day in day_container:
-    soup_tag = [val.text for val in day.find_all('span')]
-    individual_price = [str(val) for val in soup_tag]
-    price_entry = []
+    soup_tag = [str(val.get_text()) for val in day.find_all('span')]
+    individual_price = [price.replace(",", "") for price in soup_tag]  # replace comma with space to convert into float
+    price_entry = []  # initialize new array to put converted value
     for num in range(len(individual_price)):
         # print(type(individual_price[num]))
         if num != 0:
             price = individual_price[num]
-            print(type(price))
             float_price = float(price)
             price_entry.append(float_price)
         else:
-            price_entry.append(individual_price[num])
-    print(price_entry)
-    break
-    # each_price.append(individual_price[0])
+            date = datetime.strptime(individual_price[num], "%b %d %Y").date()
+            price_entry.append(date)
+    all_price.append(price_entry)
+
+# convert array into dataframe
+dji = pd.DataFrame(all_price, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
+dji = dji.set_index('Date')
