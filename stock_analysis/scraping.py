@@ -68,7 +68,6 @@ try:
 
         # convert array into dataframe
         df = pd.DataFrame(all_price, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'])
-        df = df.set_index('Date')
         dataframe_list.append(df)
 finally:
     driver.quit()
